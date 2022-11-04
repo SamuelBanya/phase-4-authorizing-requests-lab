@@ -1,0 +1,52 @@
+* Notes
+I setup this lab with the following commands:
+#+begin_src bash
+bundle install
+rails db:migrate db:seed
+npm install --prefix client
+#+end_src
+
+I ran the backend of this lab with the 'rails s' command.
+
+<2022-11-04 Fri 14:54>: I had to adjust the React 'scripts' section in the 'client/package.json' file with the following contents:
+#+begin_src json
+  "scripts": {
+    "start": "PORT=4000 react-scripts --openssl-legacy-provider start",
+    "build": "react-scripts --openssl-legacy-provider build",
+#+end_src
+
+I then ran the frontend of this lab with the 'npm start --prefix client' command.
+
+Goals Of Lab:
+- Your goal is to add the following functionality to the MembersOnlyArticlesController:
+- If a user is not signed in, the #index and #show actions should return a status code of 401 unauthorized, along with an error message
+- If the user is signed in, the #index and #show actions should return the JSON data for the members-only articles.
+
+<2022-11-04 Fri 15:11>: I then modified the 'app/controllers/members_only_articles_controller.rb' controller file to include the 'before_action' which I then referred to a 'authorize' private method:
+#+begin_src ruby
+class MembersOnlyArticlesController < ApplicationController
+  before_action :authorize
+  rescue_from ActiveRecord::RecordNotFound, with: :record_not_found
+
+  def index
+    articles = Article.where(is_member_only: true).includes(:user).order(created_at: :desc)
+    render json: articles, each_serializer: ArticleListSerializer
+  end
+
+  def show
+    article = Article.find(params[:id])
+    render json: article
+  end
+
+  private
+
+  def record_not_found
+    render json: { error: "Article not found" }, status: :not_found
+  end
+
+  def authorize
+    return render json: { error: "Not authorized" }, status: :unauthorized unless session.include? :user_id
+  end
+
+end
+#+end_src
